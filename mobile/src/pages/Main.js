@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 import { requestPermissionsAsync, getCurrentPositionAsync } from 'expo-location';
 import { StyleSheet, Image, View, Text, TextInput, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { MaterialIcons as Icon } from '@expo/vector-icons'
 
-import api from '../../services/api';
+import api from '../services/api';
+import { connect, disconnect, subscribeToNewDevs } from '../services/socket';
 
 export default function Main({ navigation }) {
   const [devs, setDevs] = useState([]);
@@ -26,12 +27,29 @@ export default function Main({ navigation }) {
           longitude,
           latitudeDelta: 0.04,
           longitudeDelta: 0.04,
-        })
+        });
       }
     }
 
     loadInitialPosition();
   }, []);
+
+  useEffect(() => {
+    const unsubscribeFunction = subscribeToNewDevs(dev => setDevs([...devs, dev]));
+    return unsubscribeFunction;
+  }, [devs]);
+
+  function setupWebsocket(){
+    disconnect();
+
+    const { latitude, longitude } = currentRegion;
+
+    connect(
+      latitude, 
+      longitude,
+      techs,
+    );
+  }
 
   async function loadDevs(){
     const { latitude, longitude } = currentRegion;
@@ -43,6 +61,7 @@ export default function Main({ navigation }) {
       }
     });
 
+    setupWebsocket();
     setDevs(response.data.devs);
   }
 
